@@ -1,0 +1,105 @@
+1.
+from google.colab import drive
+drive.mount('/content/drive')
+
+2.
+# Dataset ZIP ko Drive se copy karein
+!cp "/content/drive/MyDrive/YOLO_Dataset.zip" /content/
+
+# Extract
+!unzip -q /content/YOLO_Dataset.zip -d /content/
+
+# ZIP delete
+!rm /content/YOLO_Dataset.zip
+
+# Verify
+!ls -la /content/YOLO_Dataset/
+
+3.
+yaml_content = """path: /content/YOLO_Dataset
+train: images/train
+val: images/val
+test: images/test
+nc: 9
+names:
+  - THREE WHEELER
+  - BUS
+  - CJV
+  - LCV
+  - TWO WHEELER
+  - MAV
+  - TRACTOR
+  - 2 AXLE TRUCK
+  - TRACTOR WITH TROLLY"""
+
+with open('/content/YOLO_Dataset/data.yaml', 'w') as f:
+    f.write(yaml_content)
+
+print("✅ data.yaml updated for Colab!")
+!cat /content/YOLO_Dataset/data.yaml
+
+4.
+print("📊 Dataset Info:")
+!echo "Train images: $(ls /content/YOLO_Dataset/images/train/ | wc -l)"
+!echo "Val images: $(ls /content/YOLO_Dataset/images/val/ | wc -l)"
+!echo "Test images: $(ls /content/YOLO_Dataset/images/test/ | wc -l)"
+
+
+5.
+!pip install ultralytics -q
+print("✅ YOLOv11 installed!")
+
+
+6.
+from ultralytics import YOLO
+
+model = YOLO('yolo11s.pt')
+
+model.train(
+    data='/content/YOLO_Dataset/data.yaml',
+    epochs=100,
+    imgsz=640,
+    batch=16,
+    device=0,
+    workers=8,
+    patience=50,
+    lr0=0.001,
+    optimizer='AdamW',
+    project='runs/vehicle_detection',
+    name='yolo11s_vehicle',
+    exist_ok=True
+)
+
+print("✅ Training Complete!")
+
+7.
+from google.colab import files
+files.download('/content/runs/detect/runs/vehicle_detection/yolo11s_vehicle/weights/best.pt')
+
+8.
+!cp /content/runs/detect/runs/vehicle_detection/yolo11s_vehicle/weights/best.pt /content/drive/MyDrive/best_yolo11s_vehicle.pt
+print("✅ Model saved to Drive!")
+
+9.
+from ultralytics.utils.plotting import plot_results
+plot_results('/content/runs/detect/runs/vehicle_detection/yolo11s_vehicle/results.csv')
+
+10.
+from ultralytics import YOLO
+import cv2
+from google.colab.patches import cv2_imshow
+import os
+
+# Load model
+model = YOLO('/content/runs/detect/runs/vehicle_detection/yolo11s_vehicle/weights/best.pt')
+
+# Test on validation images
+val_dir = '/content/YOLO_Dataset/images/val/'
+val_images = os.listdir(val_dir)[:5]
+
+for img_name in val_images:
+    img_path = os.path.join(val_dir, img_name)
+    results = model(img_path)
+
+    print(f"\n📷 {img_name}: {len(results[0].boxes)} vehicles detected")
+    cv2_imshow(results[0].plot())

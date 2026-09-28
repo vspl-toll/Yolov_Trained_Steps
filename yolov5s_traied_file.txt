@@ -1,0 +1,354 @@
+# ============================================================
+# YOLOv5s VEHICLE DETECTION - COMPLETE TRAINING FILE
+# Step 1 to Step 10
+# ============================================================
+
+
+# ============================================================
+# STEP 1: Mount Google Drive
+# ============================================================
+
+from google.colab import drive
+
+drive.mount('/content/drive')
+
+print("✅ Google Drive mounted successfully!")
+
+
+# ============================================================
+# STEP 2: Copy Dataset ZIP from Drive and Extract
+# ============================================================
+
+import os
+
+# Dataset ZIP ko Drive se Colab mein copy karein
+!cp "/content/drive/MyDrive/YOLO_Dataset.zip" /content/
+
+# Extract dataset
+!unzip -q /content/YOLO_Dataset.zip -d /content/
+
+# ZIP delete karein
+!rm /content/YOLO_Dataset.zip
+
+# Verify dataset
+print("\n📂 Dataset folder:")
+!ls -la /content/YOLO_Dataset/
+
+print("\n📂 Images folder:")
+!ls -la /content/YOLO_Dataset/images/
+
+
+# ============================================================
+# STEP 3: Create / Update data.yaml
+# ============================================================
+
+yaml_content = """path: /content/YOLO_Dataset
+train: images/train
+val: images/val
+test: images/test
+nc: 9
+names:
+  - THREE WHEELER
+  - BUS
+  - CJV
+  - LCV
+  - TWO WHEELER
+  - MAV
+  - TRACTOR
+  - 2 AXLE TRUCK
+  - TRACTOR WITH TROLLY
+"""
+
+with open('/content/YOLO_Dataset/data.yaml', 'w') as f:
+    f.write(yaml_content)
+
+print("\n✅ data.yaml created/updated for YOLOv5s!")
+print("\n📄 data.yaml content:")
+!cat /content/YOLO_Dataset/data.yaml
+
+
+# ============================================================
+# STEP 4: Dataset Information
+# ============================================================
+
+print("\n" + "=" * 60)
+print("📊 DATASET INFORMATION")
+print("=" * 60)
+
+print("\nTrain images:")
+!find /content/YOLO_Dataset/images/train -type f | wc -l
+
+print("Validation images:")
+!find /content/YOLO_Dataset/images/val -type f | wc -l
+
+print("Test images:")
+!find /content/YOLO_Dataset/images/test -type f | wc -l
+
+print("\nTrain labels:")
+!find /content/YOLO_Dataset/labels/train -type f | wc -l
+
+print("Validation labels:")
+!find /content/YOLO_Dataset/labels/val -type f | wc -l
+
+print("Test labels:")
+!find /content/YOLO_Dataset/labels/test -type f | wc -l
+
+
+# ============================================================
+# STEP 5: Install Ultralytics
+# ============================================================
+
+print("\n" + "=" * 60)
+print("📦 INSTALLING ULTRALYTICS")
+print("=" * 60)
+
+!pip install -U ultralytics -q
+
+print("\n✅ Ultralytics installed!")
+
+# Check GPU
+import torch
+
+print("\n🔥 PyTorch version:", torch.__version__)
+print("🔥 CUDA Available:", torch.cuda.is_available())
+
+if torch.cuda.is_available():
+    print("🔥 GPU:", torch.cuda.get_device_name(0))
+else:
+    print("⚠️ CUDA GPU not detected!")
+
+
+# ============================================================
+# STEP 6: YOLOv5s TRAINING
+# ============================================================
+
+from ultralytics import YOLO
+
+print("\n" + "=" * 60)
+print("🚀 YOLOv5s TRAINING STARTING")
+print("=" * 60)
+
+# YOLOv5 Small pretrained model
+model = YOLO('yolov5s.pt')
+
+print("\n✅ YOLOv5s model loaded!")
+
+# Training
+results = model.train(
+    data='/content/YOLO_Dataset/data.yaml',
+
+    # Training settings
+    epochs=100,
+    imgsz=640,
+    batch=16,
+
+    # GPU
+    device=0,
+
+    # Workers
+    workers=8,
+
+    # Early stopping
+    patience=50,
+
+    # Learning rate
+    lr0=0.001,
+
+    # Optimizer
+    optimizer='AdamW',
+
+    # Output folder
+    project='/content/runs/vehicle_detection',
+
+    # Experiment name
+    name='yolov5s_vehicle',
+
+    # Existing folder overwrite
+    exist_ok=True
+)
+
+print("\n" + "=" * 60)
+print("✅ YOLOv5s TRAINING COMPLETE!")
+print("=" * 60)
+
+
+# ============================================================
+# TRAINING OUTPUT PATH
+# ============================================================
+
+RUN_DIR = '/content/runs/vehicle_detection/yolov5s_vehicle'
+BEST_MODEL = RUN_DIR + '/weights/best.pt'
+LAST_MODEL = RUN_DIR + '/weights/last.pt'
+RESULTS_CSV = RUN_DIR + '/results.csv'
+
+print("\n📁 Training folder:")
+print(RUN_DIR)
+
+print("\n🏆 Best model:")
+print(BEST_MODEL)
+
+print("\n📦 Last model:")
+print(LAST_MODEL)
+
+
+# ============================================================
+# STEP 7: Download best.pt to PC
+# ============================================================
+
+from google.colab import files
+
+print("\n" + "=" * 60)
+print("⬇️ DOWNLOADING BEST MODEL")
+print("=" * 60)
+
+if os.path.exists(BEST_MODEL):
+
+    print("\n🏆 Best model found!")
+    print("File:", BEST_MODEL)
+
+    files.download(BEST_MODEL)
+
+    print("\n✅ best.pt download started!")
+
+else:
+
+    print("\n❌ ERROR: best.pt not found!")
+    print("Please check the training output folder.")
+
+
+# ============================================================
+# STEP 8: Save best.pt to Google Drive
+# ============================================================
+
+print("\n" + "=" * 60)
+print("💾 SAVING MODEL TO GOOGLE DRIVE")
+print("=" * 60)
+
+DRIVE_MODEL = '/content/drive/MyDrive/best_yolov5s_vehicle.pt'
+
+if os.path.exists(BEST_MODEL):
+
+    !cp "{BEST_MODEL}" "{DRIVE_MODEL}"
+
+    print("\n✅ Model saved to Google Drive!")
+    print("📁:", DRIVE_MODEL)
+
+else:
+
+    print("\n❌ best.pt not found, Drive copy skipped.")
+
+
+# ============================================================
+# STEP 9: Show Training Graphs
+# ============================================================
+
+print("\n" + "=" * 60)
+print("📊 TRAINING GRAPHS")
+print("=" * 60)
+
+from ultralytics.utils.plotting import plot_results
+
+if os.path.exists(RESULTS_CSV):
+
+    print("\n📈 Generating training graphs...")
+
+    plot_results(RESULTS_CSV)
+
+    print("\n✅ Training graphs generated!")
+
+else:
+
+    print("\n❌ results.csv not found!")
+
+
+# ============================================================
+# STEP 10: Validate on Validation Images
+# ============================================================
+
+print("\n" + "=" * 60)
+print("🧪 VALIDATION IMAGE TEST")
+print("=" * 60)
+
+from ultralytics import YOLO
+import cv2
+from google.colab.patches import cv2_imshow
+
+# Load trained YOLOv5s model
+if os.path.exists(BEST_MODEL):
+
+    model = YOLO(BEST_MODEL)
+
+    print("\n✅ Trained YOLOv5s model loaded!")
+
+    # Validation image folder
+    val_dir = '/content/YOLO_Dataset/images/val/'
+
+    # Get image files
+    val_images = [
+        f for f in os.listdir(val_dir)
+        if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))
+    ]
+
+    # First 5 images
+    val_images = val_images[:5]
+
+    print("\n📷 Testing", len(val_images), "validation images...")
+
+    for img_name in val_images:
+
+        img_path = os.path.join(val_dir, img_name)
+
+        # Inference
+        results = model(img_path)
+
+        # Number of detections
+        detection_count = len(results[0].boxes)
+
+        print("\n" + "-" * 50)
+        print("📷 Image:", img_name)
+        print("🚗 Vehicles detected:", detection_count)
+
+        # Show detection result
+        annotated_image = results[0].plot()
+
+        cv2_imshow(annotated_image)
+
+else:
+
+    print("\n❌ Trained best.pt not found!")
+    print("Validation skipped.")
+
+
+# ============================================================
+# FINAL INFORMATION
+# ============================================================
+
+print("\n\n" + "=" * 60)
+print("🎉 YOLOv5s PROCESS COMPLETED")
+print("=" * 60)
+
+print("\n🏆 Best Model:")
+print(BEST_MODEL)
+
+print("\n💾 Google Drive Model:")
+print(DRIVE_MODEL)
+
+print("\n📊 Results:")
+print(RESULTS_CSV)
+
+print("\n📁 Training Run:")
+print(RUN_DIR)
+
+print("\n✅ Steps completed:")
+print("1. Google Drive mounted")
+print("2. Dataset copied and extracted")
+print("3. data.yaml created")
+print("4. Dataset verified")
+print("5. Ultralytics installed")
+print("6. YOLOv5s trained")
+print("7. best.pt downloaded")
+print("8. best.pt saved to Drive")
+print("9. Training graphs generated")
+print("10. Validation images tested")
+
+print("\n🚀 YOLOv5s training workflow finished!")
